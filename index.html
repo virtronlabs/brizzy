@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Chatbot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            background-color: #f0f2f5;
+        }
+
+        .chat-container {
+            max-width: 800px;
+            margin: 20px auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            height: 80vh;
+        }
+
+        .chat-header {
+            padding: 20px;
+            background: #007bff;
+            color: white;
+            border-radius: 10px 10px 0 0;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .message.user {
+            align-items: flex-end;
+        }
+
+        .message.bot {
+            align-items: flex-start;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 5px;
+        }
+
+        .user .message-content {
+            background: #007bff;
+            color: white;
+            border-radius: 15px 15px 0 15px;
+        }
+
+        .bot .message-content {
+            background: #e9ecef;
+            color: #212529;
+            border-radius: 15px 15px 15px 0;
+        }
+
+        .confidence {
+            font-size: 0.8em;
+            color: #6c757d;
+        }
+
+        .chat-input {
+            padding: 20px;
+            border-top: 1px solid #dee2e6;
+            display: flex;
+            gap: 10px;
+        }
+
+        #question-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #send-button {
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        #send-button:hover {
+            background: #0056b3;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 10px;
+            color: #6c757d;
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60% { content: '...'; }
+            80%, 100% { content: ''; }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1>AI Chatbot</h1>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+            <div class="message bot">
+                <div class="message-content">
+                    Hello! I'm your AI chatbot. How can I help you today?
+                </div>
+            </div>
+        </div>
+        <div class="loading" id="loading">Thinking</div>
+        <div class="chat-input">
+            <input type="text" id="question-input" placeholder="Type your question here..." autocomplete="off">
+            <button id="send-button">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chat-messages');
+        const questionInput = document.getElementById('question-input');
+        const sendButton = document.getElementById('send-button');
+        const loadingIndicator = document.getElementById('loading');
+
+        function addMessage(content, isUser = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'bot'}`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.textContent = content;
+            
+            messageDiv.appendChild(messageContent);
+            chatMessages.appendChild(messageDiv);
+            
+            // Scroll to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        async function sendQuestion() {
+            const question = questionInput.value.trim();
+            if (!question) return;
+
+            // Add user message
+            addMessage(question, true);
+            questionInput.value = '';
+            
+            // Show loading indicator
+            loadingIndicator.style.display = 'block';
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question }),
+                });
+
+                const data = await response.json();
+                
+                // Add bot response
+                addMessage(data.answer);
+                
+                // Add confidence score
+                const confidenceDiv = document.createElement('div');
+                confidenceDiv.className = 'confidence';
+                confidenceDiv.textContent = `Confidence: ${(data.confidence * 100).toFixed(1)}%`;
+                chatMessages.lastElementChild.appendChild(confidenceDiv);
+                
+            } catch (error) {
+                console.error('Error:', error);
+                addMessage('Sorry, I encountered an error. Please try again.');
+            } finally {
+                loadingIndicator.style.display = 'none';
+            }
+        }
+
+        // Event listeners
+        sendButton.addEventListener('click', sendQuestion);
+        questionInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendQuestion();
+            }
+        });
+    </script>
+</body>
+</html> 
