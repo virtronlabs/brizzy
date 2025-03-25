@@ -152,25 +152,24 @@ let speechClient;
 let ttsClient;
 
 try {
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS || 
-      path.join(__dirname, 'config', 'google-credentials.json');
-  
-  if (!fs.existsSync(credentialsPath)) {
-      throw new Error(`Google Cloud credentials not found at ${credentialsPath}`);
-  }
+    const credentialsPath = path.join(__dirname, 'config', 'google-credentials.json');
+    
+    if (!fs.existsSync(credentialsPath)) {
+        throw new Error(`Google Cloud credentials not found at ${credentialsPath}`);
+    }
 
-  speechClient = new speech.SpeechClient({
-      keyFilename: credentialsPath
-  });
-  
-  ttsClient = new textToSpeech.TextToSpeechClient({
-      keyFilename: credentialsPath
-  });
-  
-  console.log('Google Cloud clients initialized successfully');
+    speechClient = new speech.SpeechClient({
+        keyFilename: credentialsPath
+    });
+    
+    ttsClient = new textToSpeech.TextToSpeechClient({
+        keyFilename: credentialsPath
+    });
+    
+    console.log('Google Cloud clients initialized successfully');
 } catch (error) {
-  console.error('Error initializing Google Cloud clients:', error);
-  console.error('Please ensure you have placed your Google Cloud credentials in the config directory or set GOOGLE_APPLICATION_CREDENTIALS');
+    console.error('Error initializing Google Cloud clients:', error);
+    console.error('Please ensure you have placed your Google Cloud credentials in the config directory');
 }
 
 // Configure multer for handling file uploads
@@ -225,7 +224,7 @@ async function indexDocument(id, text, metadata = {}) {
   }
 }
 
-// Modified RAG query function with conversation memory
+// RAG query function
 async function queryWithRAG(userQuestion, conversationMemory) {
   try {
     // Get relevant context from conversation memory
@@ -409,10 +408,3 @@ app.listen(PORT, () => {
     console.log(`Frontend available at http://localhost:${PORT}`);
     console.log(`API endpoints available at http://localhost:${PORT}/api/chat`);
 });
-
-// Export for potential use in other modules
-export { 
-  conversationMemory, 
-  HybridConversationMemory, 
-  queryWithRAG 
-};
