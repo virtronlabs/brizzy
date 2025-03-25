@@ -84,6 +84,42 @@
             border-top: 1px solid #dee2e6;
             display: flex;
             gap: 10px;
+            align-items: center;
+        }
+
+        .voice-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .voice-button {
+            padding: 10px;
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+        }
+
+        .voice-button:hover {
+            background: #218838;
+        }
+
+        .voice-button.recording {
+            background: #dc3545;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
         }
 
         #question-input {
@@ -142,6 +178,14 @@
         </div>
         <div class="loading" id="loading">Thinking</div>
         <div class="chat-input">
+            <div class="voice-controls">
+                <button id="start-voice" class="voice-button" title="Start Voice Input">
+                    🎤
+                </button>
+                <button id="stop-voice" class="voice-button" title="Stop Voice Input" style="display: none;">
+                    ⏹
+                </button>
+            </div>
             <input type="text" id="question-input" placeholder="Type your question here..." autocomplete="off">
             <button id="send-button">Send</button>
         </div>
@@ -152,6 +196,108 @@
         const questionInput = document.getElementById('question-input');
         const sendButton = document.getElementById('send-button');
         const loadingIndicator = document.getElementById('loading');
+        const startVoiceButton = document.getElementById('start-voice');
+        const stopVoiceButton = document.getElementById('stop-voice');
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        // Initialize audio recording
+        async function setupAudioRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        sampleRate: 48000,
+                        channelCount: 1,
+                        echoCancellation: true,
+                        noiseSuppression: true
+                    } 
+                });
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = (event) => {
+                    audioChunks.push(event.data);
+                };
+
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm;codecs=opus' });
+                    await sendAudioToServer(audioBlob);
+                };
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                startVoiceButton.style.display = 'none';
+            }
+        }
+
+        // Send audio to server for speech-to-text conversion
+        async function sendAudioToServer(audioBlob) {
+            const formData = new FormData();
+            formData.append('audio', audioBlob);
+
+            try {
+                const response = await fetch('/api/speech-to-text', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.text) {
+                    questionInput.value = data.text;
+                }
+            } catch (error) {
+                console.error('Error converting speech to text:', error);
+            }
+        }
+
+        // Get text-to-speech audio from server
+        async function getSpeechFromServer(text) {
+            try {
+                const response = await fetch('/api/text-to-speech', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text })
+                });
+
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audio = new Audio(audioUrl);
+                await audio.play();
+                URL.revokeObjectURL(audioUrl);
+            } catch (error) {
+                console.error('Error getting speech from server:', error);
+            }
+        }
+
+        // Voice control event listeners
+        startVoiceButton.addEventListener('click', async () => {
+            if (!mediaRecorder) {
+                await setupAudioRecording();
+            }
+            
+            if (mediaRecorder && mediaRecorder.state === 'inactive') {
+                audioChunks = [];
+                mediaRecorder.start();
+                isRecording = true;
+                startVoiceButton.style.display = 'none';
+                stopVoiceButton.style.display = 'block';
+                startVoiceButton.classList.add('recording');
+            }
+        });
+
+        stopVoiceButton.addEventListener('click', () => {
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                mediaRecorder.stop();
+                isRecording = false;
+                startVoiceButton.style.display = 'block';
+                stopVoiceButton.style.display = 'none';
+                startVoiceButton.classList.remove('recording');
+            }
+        });
 
         function addMessage(content, isUser = false) {
             const messageDiv = document.createElement('div');
@@ -166,6 +312,11 @@
             
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            // Speak bot messages using Google Cloud TTS
+            if (!isUser) {
+                getSpeechFromServer(content);
+            }
         }
 
         async function sendQuestion() {

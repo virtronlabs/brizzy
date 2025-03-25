@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Virtron Metaverse Chat</title>
+    <script src="/script.js" type="module"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            max-width: 600px; 
+            margin: 0 auto; 
+            padding: 20px; 
+        }
+        #chat-response {
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            min-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Virtron Metaverse Chat</h1>
+    <form id="chat-form">
+        <input 
+            type="text" 
+            id="query-input" 
+            placeholder="Ask about Virtron Metaverse" 
+            required
+        >
+        <button type="submit">Send</button>
+    </form>
+    <div id="chat-response"></div>
+</body>
+</html>
