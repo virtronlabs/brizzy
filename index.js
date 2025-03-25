@@ -147,29 +147,46 @@ class HybridConversationMemory {
   }
 }
 
-// Initialize Google Cloud clients with error handling
+// Initialize Google Cloud clients with support for both file and env credentials
 let speechClient;
 let ttsClient;
 
 try {
+    let credentials;
     const credentialsPath = path.join(__dirname, 'config', 'google-credentials.json');
     
-    if (!fs.existsSync(credentialsPath)) {
-        throw new Error(`Google Cloud credentials not found at ${credentialsPath}`);
+    // Check if we have credentials in environment variable
+    if (process.env.GOOGLE_CLOUD_CREDENTIALS) {
+        try {
+            credentials = JSON.parse(process.env.GOOGLE_CLOUD_CREDENTIALS);
+            console.log('Using Google Cloud credentials from environment variable');
+        } catch (error) {
+            console.error('Error parsing Google Cloud credentials from environment:', error);
+        }
+    }
+    // Fall back to file-based credentials if available
+    else if (fs.existsSync(credentialsPath)) {
+        try {
+            const rawCredentials = fs.readFileSync(credentialsPath, 'utf8');
+            credentials = JSON.parse(rawCredentials);
+            console.log('Using Google Cloud credentials from config file');
+        } catch (error) {
+            console.error('Error reading Google Cloud credentials file:', error);
+        }
     }
 
-    speechClient = new speech.SpeechClient({
-        keyFilename: credentialsPath
-    });
-    
-    ttsClient = new textToSpeech.TextToSpeechClient({
-        keyFilename: credentialsPath
-    });
+    if (!credentials) {
+        throw new Error('No valid Google Cloud credentials found');
+    }
+
+    // Initialize clients with credentials
+    speechClient = new speech.SpeechClient({ credentials });
+    ttsClient = new textToSpeech.TextToSpeechClient({ credentials });
     
     console.log('Google Cloud clients initialized successfully');
 } catch (error) {
     console.error('Error initializing Google Cloud clients:', error);
-    console.error('Please ensure you have placed your Google Cloud credentials in the config directory');
+    console.error('Please ensure you have valid Google Cloud credentials either in the config directory or in environment variables');
 }
 
 // Configure multer for handling file uploads
