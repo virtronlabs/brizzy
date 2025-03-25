@@ -263,11 +263,26 @@
                     body: JSON.stringify({ text })
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const audioBlob = await response.blob();
                 const audioUrl = URL.createObjectURL(audioBlob);
-                const audio = new Audio(audioUrl);
+                const audio = new Audio();
+                
+                // Add event listeners for better error handling
+                audio.onerror = (e) => {
+                    console.error('Audio playback error:', e);
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                audio.onended = () => {
+                    URL.revokeObjectURL(audioUrl);
+                };
+
+                audio.src = audioUrl;
                 await audio.play();
-                URL.revokeObjectURL(audioUrl);
             } catch (error) {
                 console.error('Error getting speech from server:', error);
             }

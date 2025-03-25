@@ -376,42 +376,45 @@ app.post('/api/speech-to-text', upload.single('audio'), async (req, res) => {
 });
 
 app.post('/api/text-to-speech', async (req, res) => {
-  try {
-      if (!ttsClient) {
-          return res.status(500).json({ error: 'Text-to-Speech service not initialized. Please check your Google Cloud credentials.' });
-      }
+    try {
+        if (!ttsClient) {
+            return res.status(500).json({ error: 'Text-to-Speech service not initialized. Please check your Google Cloud credentials.' });
+        }
 
-      const { text } = req.body;
-      if (!text) {
-          return res.status(400).json({ error: 'No text provided' });
-      }
+        const { text } = req.body;
+        if (!text) {
+            return res.status(400).json({ error: 'No text provided' });
+        }
 
-      const request = {
-          input: { text: text },
-          voice: {
-              languageCode: 'en-US',
-              name: 'en-US-Chirp-HD-F',  // Use a Neural2 voice (female)
-              ssmlGender: 'FEMALE',
-          },
-          audioConfig: {
-              audioEncoding: 'LINEAR16',
-              speakingRate: 1,  // Speed up the speech by 10%
-              sampleRateHertz: 16000,  // 16 kHz sample rate
-          },
-      };
+        const request = {
+            input: { text },
+            voice: { languageCode: 'en-US', ssmlGender: 'NEUTRAL' },
+            audioConfig: { 
+                audioEncoding: 'MP3',
+                pitch: 0,
+                speakingRate: 1
+            },
+        };
 
-      const [response] = await ttsClient.synthesizeSpeech(request);
-      const audioContent = response.audioContent;
+        const [response] = await ttsClient.synthesizeSpeech(request);
+        const audioContent = response.audioContent;
 
-      res.set('Content-Type', 'audio/L16; rate=16000');
-      res.send(audioContent);
-  } catch (error) {
-      console.error('Error generating speech:', error);
-      res.status(500).json({
-          error: 'Error generating speech',
-          details: error.message
-      });
-  }
+        // Set proper headers for audio streaming
+        res.set({
+            'Content-Type': 'audio/mpeg',
+            'Content-Length': audioContent.length,
+            'Cache-Control': 'no-cache',
+            'Accept-Ranges': 'bytes'
+        });
+        
+        res.send(audioContent);
+    } catch (error) {
+        console.error('Error generating speech:', error);
+        res.status(500).json({ 
+            error: 'Error generating speech',
+            details: error.message 
+        });
+    }
 });
 
 // Serve the HTML file
